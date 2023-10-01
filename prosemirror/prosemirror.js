@@ -1,7 +1,7 @@
 /* eslint-env browser */
 
 import * as Y from 'yjs'
-import { WebsocketProvider } from 'y-websocket'
+import { WebxdcProvider } from 'y-webxdc';
 import { ySyncPlugin, yCursorPlugin, yUndoPlugin, undo, redo } from 'y-prosemirror'
 import { EditorState } from 'prosemirror-state'
 import { EditorView } from 'prosemirror-view'
@@ -9,9 +9,23 @@ import { schema } from './schema.js'
 import { exampleSetup } from 'prosemirror-example-setup'
 import { keymap } from 'prosemirror-keymap'
 
+const webxdc = window.webxdc;
+
 window.addEventListener('load', () => {
   const ydoc = new Y.Doc()
-  const provider = new WebsocketProvider('wss://demos.yjs.dev', 'prosemirror-demo', ydoc)
+
+  const provider = new WebxdcProvider({
+    webxdc: webxdc, 
+    ydoc: ydoc, 
+    autosaveInterval: 10*1000,
+    getEditInfo: () => {
+      const document = getFirstLine(editorView.state);
+      const summary = `Last edit: ${webxdc.selfName}`;
+      const startinfo = `${webxdc.selfName} editing ${document}`;
+      return {document, summary, startinfo}; 
+    },
+  });
+
   const yXmlFragment = ydoc.getXmlFragment('prosemirror')
 
   const editor = document.createElement('div')
@@ -34,17 +48,6 @@ window.addEventListener('load', () => {
     })
   })
   document.body.insertBefore(editorContainer, null)
-
-  const connectBtn = /** @type {HTMLElement} */ (document.getElementById('y-connect-btn'))
-  connectBtn.addEventListener('click', () => {
-    if (provider.shouldConnect) {
-      provider.disconnect()
-      connectBtn.textContent = 'Connect'
-    } else {
-      provider.connect()
-      connectBtn.textContent = 'Disconnect'
-    }
-  })
 
   // @ts-ignore
   window.example = { provider, ydoc, yXmlFragment, prosemirrorView }
